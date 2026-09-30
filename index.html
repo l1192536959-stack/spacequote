@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpaceQuote · 室内报价可视化</title>
+  <style>
+    :root {
+      --ink: #2d2d2a;
+      --ink-soft: #68675f;
+      --paper: #f6f4ef;
+      --paper-strong: #fffdf9;
+      --paper-deep: #ebe8df;
+      --line: #dedbd2;
+      --accent: #bf6847;
+      --accent-deep: #93452f;
+      --accent-soft: #f3ded3;
+      --sage: #6f8171;
+      --gold: #bc9052;
+      --shadow: 0 18px 55px rgba(62, 47, 35, .12);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html { min-width: 320px; background: #ddd8ce; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 86% 4%, rgba(255, 244, 224, .7), transparent 31%),
+        linear-gradient(135deg, #e5e1d8 0%, #d7d2c8 100%);
+      font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+      letter-spacing: .01em;
+    }
+
+    button { font: inherit; }
+    button:focus-visible, [tabindex]:focus-visible { outline: 3px solid rgba(191,104,71,.36); outline-offset: 2px; }
+
+    .app-shell {
+      max-width: 1540px;
+      min-height: calc(100vh - 42px);
+      margin: 21px auto;
+      background: var(--paper);
+      border: 1px solid rgba(255,255,255,.66);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .topbar {
+      height: 76px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 0 28px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,253,249,.88);
+    }
+    .brand-lockup { display: flex; align-items: center; gap: 12px; min-width: 230px; }
+    .brand-mark {
+      width: 34px; height: 34px; border-radius: 10px;
+      display: grid; place-items: center; color: #fff8f1;
+      background: var(--ink); font-size: 12px; font-weight: 700; letter-spacing: .08em;
+    }
+    .brand-name { font-size: 14px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    .brand-sub { margin-top: 3px; font-size: 11px; color: var(--ink-soft); }
+    .project-pill { display: flex; align-items: center; gap: 9px; color: var(--ink-soft); font-size: 12px; }
+    .project-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--sage); box-shadow: 0 0 0 4px rgba(111,129,113,.14); }
+    .top-actions { display: flex; align-items: center; gap: 9px; }
+    .ghost-btn, .solid-btn, .icon-btn {
+      border: 1px solid var(--line); border-radius: 10px; min-height: 38px; padding: 0 14px;
+      color: var(--ink-soft); background: transparent; cursor: pointer; transition: .2s ease;
+    }
+    .ghost-btn:hover, .icon-btn:hover { background: var(--paper-deep); color: var(--ink); }
+    .solid-btn { color: #fff9f2; border-color: var(--ink); background: var(--ink); }
+    .solid-btn:hover { transform: translateY(-1px); background: #45443f; }
+    .icon-btn { display: inline-flex; align-items: center; gap: 7px; }
+
+    .workspace { display: grid; grid-template-columns: 226px minmax(0, 1fr) 340px; min-height: 760px; }
+    .sidebar { display: flex; flex-direction: column; gap: 24px; padding: 26px 18px 22px; border-right: 1px solid var(--line); background: #f0eee8; }
+    .side-kicker, .eyebrow { color: var(--ink-soft); font-size: 10px; font-weight: 700; letter-spacing: .17em; text-transform: uppercase; }
+    .side-title { display: flex; align-items: end; justify-content: space-between; margin-top: 8px; }
+    .side-title strong { font-size: 18px; font-weight: 600; }
+    .side-count { color: var(--ink-soft); font-size: 11px; }
+    .room-list { display: grid; gap: 6px; }
+    .room-btn {
+      width: 100%; display: grid; grid-template-columns: 29px 1fr auto; align-items: center; gap: 9px;
+      border: 1px solid transparent; border-radius: 12px; padding: 11px 10px; text-align: left;
+      color: var(--ink-soft); background: transparent; cursor: pointer; transition: .2s ease;
+    }
+    .room-btn:hover { background: rgba(255,255,255,.55); color: var(--ink); }
+    .room-btn[aria-current="true"] { color: var(--ink); border-color: #e7c5b7; background: var(--accent-soft); }
+    .room-index { color: #9a978d; font-size: 10px; font-weight: 700; }
+    .room-btn[aria-current="true"] .room-index { color: var(--accent-deep); }
+    .room-label { font-size: 13px; font-weight: 600; }
+    .room-meta { color: var(--ink-soft); font-size: 10px; }
+    .room-btn[aria-current="true"] .room-meta { color: var(--accent-deep); }
+    .side-bottom { margin-top: auto; display: grid; gap: 14px; }
+    .mini-total { padding: 15px; border-radius: 14px; color: #fff8f0; background: var(--ink); }
+    .mini-total span { display: block; color: #b9b6ae; font-size: 11px; }
+    .mini-total strong { display: block; margin: 7px 0 3px; font-size: 22px; font-weight: 500; letter-spacing: -.04em; }
+    .mini-total small { color: #a7a49d; font-size: 10px; }
+    .project-meta { display: grid; gap: 9px; color: var(--ink-soft); font-size: 11px; }
+    .meta-row { display: flex; justify-content: space-between; gap: 12px; }
+    .meta-row b { color: var(--ink); font-weight: 600; }
+
+    .stage { min-width: 0; padding: 31px 29px 25px; background: var(--paper); }
+    .stage-head { display: flex; justify-content: space-between; align-items: start; gap: 20px; margin-bottom: 23px; }
+    .stage-title h1 { margin: 8px 0 4px; font-size: clamp(27px, 3vw, 39px); font-weight: 500; letter-spacing: -.05em; }
+    .stage-title p { margin: 0; color: var(--ink-soft); font-size: 12px; }
+    .view-tools { display: flex; align-items: center; gap: 6px; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper-strong); }
+    .view-btn { border: 0; border-radius: 8px; padding: 8px 11px; color: var(--ink-soft); background: transparent; cursor: pointer; font-size: 11px; }
+    .view-btn[aria-pressed="true"] { color: var(--ink); background: var(--paper-deep); font-weight: 700; }
+    .reset-btn { margin-left: 4px; border-left: 1px solid var(--line); border-radius: 0 8px 8px 0; }
+    .viewport-shell { position: relative; min-height: 560px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #dfdcd2; border-radius: var(--radius); background: #eeece5; }
+    .viewport-toolbar { z-index: 2; display: flex; justify-content: space-between; padding: 17px 18px 0; color: var(--ink-soft); font-size: 11px; }
+    .drag-note { display: inline-flex; align-items: center; gap: 7px; }
+    .drag-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px rgba(191,104,71,.12); }
+    .angle-readout { font-variant-numeric: tabular-nums; }
+    .svg-wrap { position: relative; flex: 1; min-height: 470px; touch-action: none; }
+    #roomSvg { width: 100%; height: 100%; display: block; user-select: none; cursor: grab; }
+    #roomSvg.is-dragging { cursor: grabbing; }
+    .room-hit { fill: transparent; stroke: transparent; pointer-events: all; cursor: pointer; }
+    .ground-shadow { fill: rgba(90, 75, 56, .12); filter: blur(16px); }
+    .dimension { fill: var(--ink-soft); font-size: 11px; font-weight: 600; letter-spacing: .05em; }
+    .zone-label { fill: #605a4f; font-size: 11px; font-weight: 700; letter-spacing: .06em; }
+    .furniture-label { fill: #6c6257; font-size: 9px; }
+    .scale-note { position: absolute; bottom: 16px; left: 18px; color: #959087; font-size: 10px; }
+    .stage-foot { display: flex; justify-content: space-between; align-items: center; gap: 15px; padding: 13px 18px 15px; border-top: 1px solid var(--line); background: rgba(255,253,249,.5); }
+    .legend { display: flex; flex-wrap: wrap; gap: 11px; color: var(--ink-soft); font-size: 10px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+    .swatch { width: 8px; height: 8px; border-radius: 2px; }
+    .swatch-main { background: #bf6847; } .swatch-labor { background: #bc9052; } .swatch-aux { background: #7a8b7c; }
+    .stage-actions { display: flex; gap: 8px; }
+    .stage-actions button { min-height: 32px; padding: 0 10px; border-radius: 8px; font-size: 11px; }
+
+    .details { padding: 29px 23px 24px; border-left: 1px solid var(--line); background: var(--paper-strong); }
+    .detail-kicker { display: flex; justify-content: space-between; align-items: center; color: var(--ink-soft); font-size: 11px; }
+    .saved-state { display: inline-flex; align-items: center; gap: 5px; color: var(--sage); font-size: 10px; }
+    .saved-state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--sage); }
+    .total-block { padding: 24px 0 21px; border-bottom: 1px solid var(--line); }
+    .total-label { color: var(--ink-soft); font-size: 11px; }
+    .total-value { display: block; margin: 8px 0 7px; font-size: 34px; font-weight: 500; letter-spacing: -.055em; }
+    .total-note { color: var(--ink-soft); font-size: 11px; }
+    .metric-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; padding: 18px 0 23px; border-bottom: 1px solid var(--line); }
+    .metric { min-width: 0; padding: 11px 9px 10px; border: 1px solid #e7e3d9; border-radius: 11px; background: #f8f6f1; }
+    .metric span { display: block; color: var(--ink-soft); font-size: 10px; }
+    .metric strong { display: inline-block; margin-top: 8px; font-size: 18px; font-weight: 600; letter-spacing: -.04em; }
+    .metric em { margin-left: 2px; color: var(--ink-soft); font-size: 10px; font-style: normal; }
+    .quote-section { padding-top: 22px; }
+    .section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 11px; }
+    .section-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
+    .section-head span { color: var(--ink-soft); font-size: 10px; }
+    .quote-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .quote-table th { padding: 0 0 9px; color: #97938a; font-size: 10px; font-weight: 500; text-align: left; }
+    .quote-table th:last-child, .quote-table td:last-child { text-align: right; }
+    .quote-table td { padding: 11px 0; vertical-align: top; border-top: 1px solid #ebe8e0; }
+    .quote-name { display: block; color: var(--ink); font-weight: 600; }
+    .quote-meta { display: block; max-width: 160px; margin-top: 3px; color: #99958c; font-size: 10px; line-height: 1.35; }
+    .cat-tag { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-soft); font-size: 10px; white-space: nowrap; }
+    .cat-tag::before { content: ""; width: 6px; height: 6px; border-radius: 2px; background: currentColor; }
+    .cat-main { color: var(--accent); } .cat-labor { color: var(--gold); } .cat-aux { color: var(--sage); }
+    .amount { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+    .quote-footer { display: flex; justify-content: space-between; gap: 10px; margin-top: 4px; padding-top: 13px; border-top: 1px solid var(--ink); font-size: 11px; }
+    .quote-footer span { color: var(--ink-soft); }
+    .quote-footer strong { font-size: 16px; font-weight: 600; }
+    .material-section { margin-top: 26px; padding-top: 19px; border-top: 1px solid var(--line); }
+    .material-list { display: grid; gap: 9px; }
+    .material-chip { display: flex; justify-content: space-between; gap: 10px; padding: 10px 11px; border-radius: 10px; background: #f6f3ec; }
+    .material-chip b { display: block; font-size: 11px; font-weight: 600; }
+    .material-chip span { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 10px; }
+    .material-chip strong { color: var(--accent-deep); font-size: 11px; font-weight: 600; white-space: nowrap; }
+
+    .toast { position: fixed; left: 50%; bottom: 25px; z-index: 20; transform: translate(-50%, 16px); opacity: 0; pointer-events: none; padding: 10px 15px; border-radius: 9px; color: #fff9f1; background: var(--ink); font-size: 12px; transition: .22s ease; }
+    .toast.is-visible { transform: translate(-50%,0); opacity: 1; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    @media (max-width: 1180px) {
+      .workspace { grid-template-columns: 195px minmax(0, 1fr) 305px; }
+      .stage { padding-inline: 21px; }
+      .details { padding-inline: 18px; }
+      .topbar { padding-inline: 21px; }
+    }
+    @media (max-width: 930px) {
+      .app-shell { margin: 0; min-height: 100vh; border-radius: 0; }
+      .workspace { grid-template-columns: 1fr; }
+      .sidebar { display: grid; grid-template-columns: auto 1fr; gap: 13px 22px; padding: 17px 21px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .side-bottom { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 22px; margin-top: 0; }
+      .project-meta { display: flex; gap: 15px; }
+      .room-list { display: flex; align-items: center; gap: 4px; overflow-x: auto; }
+      .room-btn { min-width: 104px; }
+      .mini-total { min-width: 210px; }
+      .details { border-top: 1px solid var(--line); border-left: 0; }
+    }
+    @media (max-width: 590px) {
+      .topbar { height: auto; min-height: 74px; padding: 15px 16px; align-items: flex-start; }
+      .project-pill { display: none; }
+      .top-actions .ghost-btn { display: none; }
+      .stage { padding: 24px 14px 18px; }
+      .stage-head { display: block; }
+      .view-tools { width: fit-content; margin-top: 16px; }
+      .viewport-shell { min-height: 495px; }
+      .svg-wrap { min-height: 405px; }
+      .stage-foot { display: block; }
+      .stage-actions { margin-top: 13px; }
+      .sidebar { padding: 15px 14px; display: block; }
+      .side-title { margin-bottom: 12px; }
+      .side-bottom { display: block; margin-top: 14px; }
+      .project-meta { display: none; }
+      .mini-total { min-width: 0; }
+      .details { padding: 23px 15px; }
+      .total-value { font-size: 31px; }
+    }
+
+    @media print {
+      html, body { background: #fff; }
+      .app-shell { margin: 0; max-width: none; border: 0; border-radius: 0; box-shadow: none; }
+      .top-actions, .view-tools, .stage-actions, .sidebar, .toast { display: none !important; }
+      .workspace { display: grid; grid-template-columns: 1fr 320px; }
+      .stage { padding-left: 20px; }
+      .details { border-left: 1px solid #aaa; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-lockup">
+        <div class="brand-mark" aria-hidden="true">SQ</div>
+        <div>
+          <div class="brand-name">SpaceQuote</div>
+          <div class="brand-sub">室内设计报价工作台</div>
+        </div>
+      </div>
+      <div class="project-pill"><span class="project-dot" aria-hidden="true"></span><span>云栖里 · 02-18 项目</span><span>·</span><span>初版预算</span></div>
+      <div class="top-actions">
+        <button class="ghost-btn" id="shareBtn" type="button">分享预览</button>
+        <button class="solid-btn" id="printBtn" type="button">导出报价</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="sidebar" aria-label="房间导航">
+        <div>
+          <div class="side-kicker">Project spaces</div>
+          <div class="side-title"><strong>房间清单</strong><span class="side-count">5 个空间</span></div>
+        </div>
+        <nav class="room-list" id="roomNav"></nav>
+        <div class="side-bottom">
+          <div class="mini-total">
+            <span>全屋预估</span>
+            <strong id="sideTotal">¥ 0</strong>
+            <small>含主材、人工、辅料</small>
+          </div>
+          <div class="project-meta">
+            <div class="meta-row"><span>设计阶段</span><b>材料核算</b></div>
+            <div class="meta-row"><span>报价版本</span><b>V 1.2</b></div>
+            <div class="meta-row"><span>更新日期</span><b>2026.09.30</b></div>
+          </div>
+        </div>
+      </aside>
+
+      <section class="stage" aria-labelledby="roomTitle">
+        <div class="stage-head">
+          <div class="stage-title">
+            <div class="eyebrow" id="roomCode">ROOM / 01</div>
+            <h1 id="roomTitle">客餐厅</h1>
+            <p id="roomSubtitle">开放式公共空间 · 岩板电视墙 + 木作收口</p>
+          </div>
+          <div class="view-tools" role="group" aria-label="视图控制">
+            <button class="view-btn" type="button" data-view="3d" aria-pressed="true">3D 视角</button>
+            <button class="view-btn" type="button" data-view="flat" aria-pressed="false">平面图</button>
+            <button class="view-btn reset-btn" id="resetView" type="button">重置</button>
+          </div>
+        </div>
+
+        <div class="viewport-shell">
+          <div class="viewport-toolbar">
+            <span class="drag-note"><span class="drag-dot" aria-hidden="true"></span>拖动旋转整屋 · 点击房间查看报价</span>
+            <span class="angle-readout" id="angleReadout">视角 58° / -38°</span>
+          </div>
+          <div class="svg-wrap" id="svgWrap">
+            <svg id="roomSvg" viewBox="0 0 560 430" role="img" aria-labelledby="svgTitle svgDesc">
+              <title id="svgTitle">客餐厅三维示意图</title>
+              <desc id="svgDesc">可拖动旋转的房间报价示意模型</desc>
+              <g id="sceneRoot"></g>
+            </svg>
+            <div class="scale-note">比例示意 · 单位：m</div>
+          </div>
+          <div class="stage-foot">
+            <div class="legend" aria-label="报价分类图例">
+              <span class="legend-item"><i class="swatch swatch-main"></i>主材</span>
+              <span class="legend-item"><i class="swatch swatch-labor"></i>人工</span>
+              <span class="legend-item"><i class="swatch swatch-aux"></i>辅料</span>
+            </div>
+            <div class="stage-actions">
+              <button class="ghost-btn" id="noteBtn" type="button">添加备注</button>
+              <button class="solid-btn" id="copyBtn" type="button">复制空间摘要</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="details" aria-label="房间报价详情">
+        <div class="detail-kicker"><span>QUOTE SUMMARY</span><span class="saved-state">已保存</span></div>
+        <div class="total-block">
+          <span class="total-label">当前空间估算</span>
+          <strong class="total-value" id="roomTotal">¥ 0</strong>
+          <span class="total-note" id="totalNote">约占全屋 0%</span>
+        </div>
+        <div class="metric-grid" aria-label="空间尺寸">
+          <div class="metric"><span>面积</span><strong id="areaMetric">0</strong><em>m²</em></div>
+          <div class="metric"><span>周长</span><strong id="perimeterMetric">0</strong><em>m</em></div>
+          <div class="metric"><span>层高</span><strong id="heightMetric">0</strong><em>m</em></div>
+        </div>
+
+        <section class="quote-section" aria-labelledby="quoteHeading">
+          <div class="section-head"><h2 id="quoteHeading">报价明细</h2><span id="lineCount">0 项</span></div>
+          <table class="quote-table">
+            <thead><tr><th>项目 / 规格</th><th>分类</th><th>金额</th></tr></thead>
+            <tbody id="quoteBody"></tbody>
+          </table>
+          <div class="quote-footer"><span>房间小计</span><strong id="quoteSubtotal">¥ 0</strong></div>
+        </section>
+
+        <section class="material-section" aria-labelledby="materialHeading">
+          <div class="section-head"><h2 id="materialHeading">材料配置</h2><span>当前房间</span></div>
+          <div class="material-list" id="materialList"></div>
+        </section>
+      </aside>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const rooms = [
+      {
+        id: "living", label: "客餐厅", code: "ROOM / 01", kind: "公共空间",
+        subtitle: "开放式公共空间 · 岩板电视墙 + 木作收口", width: 6.8, depth: 4.6, height: 2.85,
+        materials: [{ name: "米白岩板", detail: "电视墙 / 900×1800 mm", amount: 9516 }, { name: "橡木饰面", detail: "餐边柜 + 隐形门", amount: 5332 }, { name: "浅灰微水泥", detail: "地面找平与保护", amount: 1680 }],
+        items: [
+          { category: "主材", key: "main", name: "岩板电视墙", detail: "900×1800 mm · 米白哑光", qty: "12.2 m²", amount: 9516 },
+          { category: "主材", key: "main", name: "橡木饰面柜体", detail: "开放格 + 隐形门", qty: "8.6 m²", amount: 5332 },
+          { category: "人工", key: "labor", name: "木作安装与收口", detail: "现场调平 / 阴角处理", qty: "1 项", amount: 4800 },
+          { category: "辅料", key: "aux", name: "基层板与安装辅料", detail: "阻燃板 / 胶 / 收边", qty: "1 批", amount: 1680 },
+          { category: "辅料", key: "aux", name: "成品保护与清运", detail: "公共区施工保障", qty: "1 项", amount: 980 }
+        ],
+        furniture: "living"
+      },
+      {
+        id: "master", label: "主卧", code: "ROOM / 02", kind: "私享空间",
+        subtitle: "静谧睡眠区 · 木饰面背景 + 多层实木地板", width: 4.5, depth: 3.8, height: 2.85,
+        materials: [{ name: "多层实木地板", detail: "橡木自然色 / 150 mm", amount: 8892 }, { name: "木饰面背景", detail: "床头整板 + 灯带", amount: 5304 }, { name: "环保墙面漆", detail: "低 VOC / 暖灰白", amount: 1640 }],
+        items: [
+          { category: "主材", key: "main", name: "多层实木地板", detail: "橡木自然色 · 150 mm", qty: "17.1 m²", amount: 8892 },
+          { category: "主材", key: "main", name: "床头木饰面", detail: "整板 + 暗藏灯带", qty: "7.8 m²", amount: 5304 },
+          { category: "人工", key: "labor", name: "地板铺装", detail: "含找平与踢脚线安装", qty: "17.1 m²", amount: 2565 },
+          { category: "人工", key: "labor", name: "木作安装", detail: "背景墙现场收口", qty: "1 项", amount: 2900 },
+          { category: "辅料", key: "aux", name: "踢脚线与收边", detail: "同色木质 / 阴角条", qty: "1 批", amount: 1380 }
+        ],
+        furniture: "bed"
+      },
+      {
+        id: "second", label: "次卧", code: "ROOM / 03", kind: "弹性空间",
+        subtitle: "可切换客房 / 书房 · 轻量化材料组合", width: 4.2, depth: 3.4, height: 2.85,
+        materials: [{ name: "复合木地板", detail: "浅橡木 / 哑光面", amount: 7420 }, { name: "环保墙面漆", detail: "低 VOC / 雾蓝灰", amount: 3600 }, { name: "定制书柜", detail: "开放格 + 抽屉", amount: 4180 }],
+        items: [
+          { category: "主材", key: "main", name: "复合木地板", detail: "浅橡木哑光面", qty: "14.3 m²", amount: 7420 },
+          { category: "主材", key: "main", name: "定制书柜", detail: "开放格 + 抽屉", qty: "3.4 m", amount: 4180 },
+          { category: "人工", key: "labor", name: "地板与柜体安装", detail: "含现场保护", qty: "1 项", amount: 3020 },
+          { category: "辅料", key: "aux", name: "基层与五金辅料", detail: "背板 / 螺丝 / 收口", qty: "1 批", amount: 1120 }
+        ],
+        furniture: "study"
+      },
+      {
+        id: "kitchen", label: "厨房", code: "ROOM / 04", kind: "功能空间",
+        subtitle: "高频操作区 · 石英石台面 + 一体化收纳", width: 4.2, depth: 3.1, height: 2.85,
+        materials: [{ name: "石英石台面", detail: "20 mm · 雾白细砂", amount: 7800 }, { name: "PET 柜门", detail: "暖灰肤感 / 无拉手", amount: 22400 }, { name: "墙地砖", detail: "600×1200 mm · 防滑", amount: 6800 }],
+        items: [
+          { category: "主材", key: "main", name: "PET 一体化柜体", detail: "暖灰肤感 / 无拉手", qty: "5.6 m", amount: 22400 },
+          { category: "主材", key: "main", name: "石英石台面", detail: "20 mm · 雾白细砂", qty: "4.2 m", amount: 7800 },
+          { category: "人工", key: "labor", name: "橱柜安装调试", detail: "含台面开孔与收口", qty: "1 项", amount: 6800 },
+          { category: "辅料", key: "aux", name: "五金与水电辅料", detail: "铰链 / 下水 / 角阀", qty: "1 批", amount: 4200 },
+          { category: "辅料", key: "aux", name: "墙地面铺贴辅料", detail: "背胶 / 填缝 / 找平", qty: "1 批", amount: 1860 }
+        ],
+        furniture: "kitchen"
+      },
+      {
+        id: "bath", label: "卫生间", code: "ROOM / 05", kind: "功能空间",
+        subtitle: "干湿分区 · 防滑砖 + 壁龛收纳", width: 2.6, depth: 2.2, height: 2.75,
+        materials: [{ name: "防滑墙地砖", detail: "600×1200 mm · 灰米色", amount: 9800 }, { name: "卫浴洁具", detail: "壁挂马桶 + 台盆", amount: 8800 }, { name: "长虹玻璃隔断", detail: "超白钢化玻璃", amount: 4200 }],
+        items: [
+          { category: "主材", key: "main", name: "防滑墙地砖", detail: "600×1200 mm · 灰米色", qty: "28.0 m²", amount: 9800 },
+          { category: "主材", key: "main", name: "壁挂洁具套装", detail: "壁挂马桶 + 台盆", qty: "1 套", amount: 8800 },
+          { category: "人工", key: "labor", name: "防水与闭水", detail: "墙地面两遍防水", qty: "1 项", amount: 2200 },
+          { category: "人工", key: "labor", name: "墙地砖铺贴", detail: "含阳角倒角处理", qty: "28.0 m²", amount: 3900 },
+          { category: "辅料", key: "aux", name: "填缝与地漏辅料", detail: "环氧彩砂 / 防臭地漏", qty: "1 批", amount: 980 }
+        ],
+        furniture: "bath"
+      }
+    ];
+
+    const $ = (id) => document.getElementById(id);
+    const svgNS = "http://www.w3.org/2000/svg";
+    const state = { roomId: "living", yaw: -38, pitch: 58, flat: false, dragging: false, pointerX: 0, pointerY: 0, dragMoved: false, pointerRoomId: null };
+    const house = { width: 11.3, depth: 7.7 };
+    const roomLayout = {
+      living: { x: 0, y: 0 },
+      kitchen: { x: 0, y: 4.6 },
+      bath: { x: 4.2, y: 4.6 },
+      master: { x: 6.8, y: 0 },
+      second: { x: 6.8, y: 3.8 }
+    };
+    const roomTones = {
+      living: "#e5c4b3", master: "#d7cec1", second: "#d9d8ce", kitchen: "#d2d9d1", bath: "#d2d7d6"
+    };
+    const activeTone = "#c97856";
+    const money = (value) => "¥ " + value.toLocaleString("zh-CN");
+    const currentRoom = () => rooms.find((room) => room.id === state.roomId);
+    const roomTotal = (room) => room.items.reduce((sum, item) => sum + item.amount, 0);
+    const totalAll = () => rooms.reduce((sum, room) => sum + roomTotal(room), 0);
+
+    function createSvg(tag, attrs = {}) {
+      const node = document.createElementNS(svgNS, tag);
+      Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, value));
+      return node;
+    }
+
+    function projection(room) {
+      const width = room.width, depth = room.depth;
+      const scale = state.flat ? 51 : 47;
+      const cx = 280, cy = state.flat ? 214 : 244;
+      const yaw = state.flat ? 0 : state.yaw * Math.PI / 180;
+      const pitch = state.flat ? 0 : state.pitch * Math.PI / 180;
+      return ([x, y, z = 0]) => {
+        if (state.flat) return [cx + (x - width / 2) * scale, cy + (y - depth / 2) * scale];
+        const xx = x - width / 2, yy = y - depth / 2;
+        const rx = xx * Math.cos(yaw) - yy * Math.sin(yaw);
+        const ry = xx * Math.sin(yaw) + yy * Math.cos(yaw);
+        const py = ry * Math.cos(pitch) - z * Math.sin(pitch);
+        return [cx + rx * scale, cy - py * scale];
+      };
+    }
+
+    function houseProjection() {
+      const scale = state.flat ? 35 : 34;
+      const cx = 280, cy = state.flat ? 218 : 252;
+      const yaw = state.flat ? 0 : state.yaw * Math.PI / 180;
+      const pitch = state.flat ? 0 : state.pitch * Math.PI / 180;
+      return ([x, y, z = 0]) => {
+        if (state.flat) return [cx + (x - house.width / 2) * scale, cy + (y - house.depth / 2) * scale];
+        const xx = x - house.width / 2, yy = y - house.depth / 2;
+        const rx = xx * Math.cos(yaw) - yy * Math.sin(yaw);
+        const ry = xx * Math.sin(yaw) + yy * Math.cos(yaw);
+        const py = ry * Math.cos(pitch) - z * Math.sin(pitch);
+        return [cx + rx * scale, cy - py * scale];
+      };
+    }
+
+    function points(project, list) { return list.map((p) => project(p).join(",")).join(" "); }
+    function poly(group, project, coords, fill, attrs = {}) {
+      group.appendChild(createSvg("polygon", { points: points(project, coords), fill, ...attrs }));
+    }
+    function line(group, project, from, to, attrs = {}) {
+      const a = project(from), b = project(to);
+      group.appendChild(createSvg("line", { x1: a[0], y1: a[1], x2: b[0], y2: b[1], ...attrs }));
+    }
+    function text(group, project, value, point, className, attrs = {}) {
+      const [x, y] = project(point);
+      const node = createSvg("text", { x, y, class: className, ...attrs });
+      node.textContent = value;
+      group.appendChild(node);
+    }
+    function box(group, project, x, y, width, depth, height, top, side, front, label) {
+      const a = [x, y, 0], b = [x + width, y, 0], c = [x + width, y + depth, 0], d = [x, y + depth, 0];
+      const at = [x, y, height], bt = [x + width, y, height], ct = [x + width, y + depth, height], dt = [x, y + depth, height];
+      poly(group, project, [a, b, bt, at], front, { "fill-opacity": .97 });
+      poly(group, project, [b, c, ct, bt], side, { "fill-opacity": .93 });
+      poly(group, project, [at, bt, ct, dt], top, { "fill-opacity": .98 });
+      if (label) text(group, project, label, [x + width / 2, y + depth / 2, height + .02], "furniture-label", { "text-anchor": "middle" });
+    }
+
+    function drawFurniture(group, room, project) {
+      const palette = { wood: "#b88964", woodDark: "#8b5f47", fabric: "#c5b6a1", fabricSide: "#9d8d79", stone: "#d8d1c4", stoneSide: "#aaa294", green: "#778675", tile: "#c8c3b8", tileSide: "#969187" };
+      if (room.furniture === "living") {
+        poly(group, project, [[.45, 2.5, .02], [3.5, 2.5, .02], [3.5, 3.75, .02], [.45, 3.75, .02]], "#ddd2c1", { "fill-opacity": .52 });
+        box(group, project, .65, 2.65, 2.4, .72, .58, palette.fabric, palette.fabricSide, palette.fabric, "沙发");
+        box(group, project, 3.55, 2.72, 1.15, .7, .38, palette.stone, palette.stoneSide, palette.stone, "茶几");
+        box(group, project, 4.82, .72, 1.35, .9, .72, palette.wood, palette.woodDark, palette.wood, "餐桌");
+        box(group, project, 5.0, .22, 1.05, .25, 1.85, palette.woodDark, palette.woodDark, palette.wood, "");
+        box(group, project, .58, .65, 1.42, .42, .88, palette.green, "#566354", palette.green, "边柜");
+      } else if (room.furniture === "bed") {
+        poly(group, project, [[.55, .5, .02], [3.95, .5, .02], [3.95, 3.34, .02], [.55, 3.34, .02]], "#ddd8ce", { "fill-opacity": .44 });
+        box(group, project, .75, 1.08, 2.65, 2.05, .36, palette.wood, palette.woodDark, palette.wood, "");
+        box(group, project, .88, 1.25, 2.38, 1.7, .23, "#eee8de", "#cbc2b5", "#eee8de", "床品");
+        box(group, project, .8, .74, 2.55, .28, .72, palette.woodDark, palette.woodDark, palette.woodDark, "");
+        box(group, project, 3.58, .76, .56, 1.18, .62, palette.wood, palette.woodDark, palette.wood, "床头柜");
+        box(group, project, .42, 3.42, 3.48, .24, 1.92, palette.woodDark, palette.woodDark, palette.wood, "");
+      } else if (room.furniture === "study") {
+        box(group, project, .52, .54, 2.9, .33, 1.75, palette.wood, palette.woodDark, palette.wood, "书柜");
+        box(group, project, .66, 2.42, 2.32, .72, .76, palette.wood, palette.woodDark, palette.wood, "书桌");
+        box(group, project, 1.14, 1.72, 1.18, .56, .44, palette.fabric, palette.fabricSide, palette.fabric, "座椅");
+        box(group, project, 3.55, 2.42, .34, .36, 1.72, palette.woodDark, palette.woodDark, palette.wood, "");
+      } else if (room.furniture === "kitchen") {
+        box(group, project, .38, .36, 3.35, .62, .9, palette.wood, palette.woodDark, palette.wood, "地柜");
+        box(group, project, .38, .36, 3.35, .62, 1.0, palette.stone, palette.stoneSide, palette.stone, "台面");
+        box(group, project, .6, 1.48, 2.0, .7, .9, palette.stone, palette.stoneSide, palette.stone, "中岛");
+        box(group, project, .55, 2.56, 3.08, .3, 1.76, palette.tile, palette.tileSide, palette.tile, "墙柜");
+      } else if (room.furniture === "bath") {
+        box(group, project, .35, .3, 1.2, .46, .86, palette.tile, palette.tileSide, palette.tile, "台盆");
+        box(group, project, 1.78, .35, .58, .78, .62, "#d7d0c3", "#a8a093", "#d7d0c3", "马桶");
+        box(group, project, .36, 1.52, 1.88, .34, 2.18, "#b7c1bc", "#8d9891", "#b7c1bc", "玻璃隔断");
+        poly(group, project, [[.38, 1.9, .03], [2.3, 1.9, .03], [2.3, 2.75, .03], [.38, 2.75, .03]], "#d6d0c4", { "fill-opacity": .7 });
+      }
+    }
+
+    function drawHouseRoom(group, room, project) {
+      const layout = roomLayout[room.id];
+      const x = layout.x, y = layout.y, w = room.width, d = room.depth;
+      const active = room.id === state.roomId;
+      const roomFill = active ? activeTone : roomTones[room.id];
+      const localProject = (point) => project([point[0] + x, point[1] + y, point[2] || 0]);
+      const floor = [[x,y,0],[x+w,y,0],[x+w,y+d,0],[x,y+d,0]];
+      poly(group, project, floor, roomFill, { "fill-opacity": active ? .82 : .57, stroke: active ? "#9b4f38" : "#a9a59b", "stroke-width": active ? 2 : 1.05 });
+      if (!state.flat) {
+        poly(group, project, [[x,y,0],[x+w,y,0],[x+w,y,room.height],[x,y,room.height]], "#eee6db", { "fill-opacity": .72, stroke: "#b7aea2", "stroke-width": 1 });
+        poly(group, project, [[x,y,0],[x,y+d,0],[x,y+d,room.height],[x,y,room.height]], "#ddd4c6", { "fill-opacity": .63, stroke: "#b7aea2", "stroke-width": 1 });
+        poly(group, project, [[x+w,y,0],[x+w,y+d,0],[x+w,y+d,room.height],[x+w,y,room.height]], "#ebe3d7", { "fill-opacity": .2, stroke: "#bdb4a8", "stroke-width": 1 });
+      }
+      const zone = room.furniture === "kitchen" ? "操作区" : room.furniture === "bath" ? "干湿分区" : room.furniture === "bed" ? "睡眠区" : room.furniture === "study" ? "工作区" : "洽谈 / 用餐";
+      text(group, project, room.label, [x + w / 2, y + d * .25, state.flat ? .06 : room.height + .08], "zone-label", { "text-anchor": "middle" });
+      text(group, project, zone, [x + w / 2, y + d * .42, state.flat ? .06 : room.height + .08], "furniture-label", { "text-anchor": "middle" });
+      drawFurniture(group, room, localProject);
+    }
+
+    function renderScene() {
+      const selected = currentRoom();
+      const project = houseProjection();
+      const root = $("sceneRoot");
+      root.replaceChildren();
+      const shadow = createSvg("ellipse", { cx: 280, cy: state.flat ? 390 : 372, rx: 210, ry: state.flat ? 14 : 22, class: "ground-shadow" });
+      root.appendChild(shadow);
+      const houseGroup = createSvg("g");
+      root.appendChild(houseGroup);
+      rooms.forEach((room) => drawHouseRoom(houseGroup, room, project));
+
+      const dimGroup = createSvg("g", { "aria-hidden": "true" });
+      root.appendChild(dimGroup);
+      const yOffset = state.flat ? .3 : .16;
+      line(dimGroup, project, [0, house.depth + yOffset, .03], [house.width, house.depth + yOffset, .03], { stroke: "#9e978b", "stroke-width": 1, "stroke-dasharray": "3 3" });
+      text(dimGroup, project, house.width.toFixed(2) + " m", [house.width / 2, house.depth + yOffset + .14, .03], "dimension", { "text-anchor": "middle" });
+      line(dimGroup, project, [house.width + yOffset, 0, .03], [house.width + yOffset, house.depth, .03], { stroke: "#9e978b", "stroke-width": 1, "stroke-dasharray": "3 3" });
+      text(dimGroup, project, house.depth.toFixed(2) + " m", [house.width + yOffset + .14, house.depth / 2, .03], "dimension", { "text-anchor": "middle", transform: "rotate(90 " + project([house.width + yOffset + .14, house.depth / 2, .03]).join(" ") + ")" });
+
+      const hitGroup = createSvg("g", { "aria-label": "房间选择区域" });
+      root.appendChild(hitGroup);
+      rooms.forEach((room) => {
+        const layout = roomLayout[room.id];
+        const hit = createSvg("polygon", { class: "room-hit", points: points(project, [[layout.x,layout.y,0.05],[layout.x+room.width,layout.y,0.05],[layout.x+room.width,layout.y+room.depth,0.05],[layout.x,layout.y+room.depth,0.05]]), "data-room-id": room.id, "aria-label": "选择" + room.label });
+        hitGroup.appendChild(hit);
+      });
+
+      $("svgTitle").textContent = "云栖里全屋三维报价图";
+      $("svgDesc").textContent = "全屋五个房间的可拖动三维示意图；当前选中" + selected.label + "，点击任意房间可查看对应报价。";
+      $("angleReadout").textContent = state.flat ? "全屋平面视图" : "整屋视角 " + Math.round(state.pitch) + "° / " + Math.round(state.yaw) + "°";
+    }
+
+    function renderNav() {
+      const nav = $("roomNav");
+      nav.replaceChildren();
+      rooms.forEach((room, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "room-btn";
+        button.setAttribute("aria-current", room.id === state.roomId ? "true" : "false");
+        button.innerHTML = `<span class="room-index">0${index + 1}</span><span class="room-label">${room.label}</span><span class="room-meta">${(room.width * room.depth).toFixed(1)}m²</span>`;
+        button.addEventListener("click", () => selectRoom(room.id));
+        nav.appendChild(button);
+      });
+    }
+
+    function selectRoom(roomId) {
+      if (!rooms.some((room) => room.id === roomId)) return;
+      state.roomId = roomId;
+      renderAll();
+      toast(currentRoom().label + "报价已切换");
+    }
+
+    function renderDetails() {
+      const room = currentRoom();
+      const area = room.width * room.depth;
+      const perimeter = 2 * (room.width + room.depth);
+      const subtotal = roomTotal(room);
+      const all = totalAll();
+      $("roomCode").textContent = room.code;
+      $("roomTitle").textContent = room.label;
+      $("roomSubtitle").textContent = room.subtitle;
+      $("roomTotal").textContent = money(subtotal);
+      $("quoteSubtotal").textContent = money(subtotal);
+      $("totalNote").textContent = "约占全屋 " + (subtotal / all * 100).toFixed(1) + "%";
+      $("areaMetric").textContent = area.toFixed(1);
+      $("perimeterMetric").textContent = perimeter.toFixed(1);
+      $("heightMetric").textContent = room.height.toFixed(2);
+      $("lineCount").textContent = room.items.length + " 项";
+      $("sideTotal").textContent = money(all);
+
+      $("quoteBody").innerHTML = room.items.map((item) => `<tr><td><span class="quote-name">${item.name}</span><span class="quote-meta">${item.detail} · ${item.qty}</span></td><td><span class="cat-tag cat-${item.key}">${item.category}</span></td><td class="amount">${money(item.amount)}</td></tr>`).join("");
+      $("materialList").innerHTML = room.materials.map((item) => `<div class="material-chip"><div><b>${item.name}</b><span>${item.detail}</span></div><strong>${money(item.amount)}</strong></div>`).join("");
+      document.title = "SpaceQuote · " + room.label + "报价";
+    }
+
+    function renderViewButtons() {
+      document.querySelectorAll("[data-view]").forEach((button) => button.setAttribute("aria-pressed", (button.dataset.view === "flat") === state.flat ? "true" : "false"));
+    }
+
+    function renderAll() { renderNav(); renderDetails(); renderViewButtons(); renderScene(); }
+
+    function toast(message) {
+      const node = $("toast");
+      node.textContent = message;
+      node.classList.add("is-visible");
+      clearTimeout(toast.timer);
+      toast.timer = setTimeout(() => node.classList.remove("is-visible"), 2200);
+    }
+
+    document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => { state.flat = button.dataset.view === "flat"; renderViewButtons(); renderScene(); }));
+    $("resetView").addEventListener("click", () => { state.yaw = -38; state.pitch = 58; state.flat = false; renderViewButtons(); renderScene(); toast("视角已重置"); });
+    $("printBtn").addEventListener("click", () => { toast("正在准备打印报价单…"); setTimeout(() => window.print(), 250); });
+    $("shareBtn").addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(window.location.href); toast("当前页面地址已复制"); }
+      catch { toast("请复制浏览器地址分享"); }
+    });
+    $("noteBtn").addEventListener("click", () => {
+      const note = window.prompt("给当前空间添加备注", "");
+      if (note && note.trim()) toast("备注已记录：" + note.trim());
+    });
+    $("copyBtn").addEventListener("click", async () => {
+      const room = currentRoom();
+      const summary = `${room.label}｜面积 ${ (room.width * room.depth).toFixed(1) }m²｜周长 ${ (2 * (room.width + room.depth)).toFixed(1) }m｜层高 ${room.height.toFixed(2)}m｜估算 ${money(roomTotal(room))}`;
+      try { await navigator.clipboard.writeText(summary); toast("空间摘要已复制"); } catch { toast(summary); }
+    });
+
+    const svg = $("roomSvg");
+    svg.addEventListener("pointerdown", (event) => { state.dragging = true; state.dragMoved = false; state.pointerRoomId = event.target.closest ? (event.target.closest(".room-hit")?.getAttribute("data-room-id") || null) : null; state.pointerX = event.clientX; state.pointerY = event.clientY; svg.classList.add("is-dragging"); svg.setPointerCapture(event.pointerId); });
+    svg.addEventListener("pointermove", (event) => {
+      if (!state.dragging || state.flat) return;
+      const dx = event.clientX - state.pointerX, dy = event.clientY - state.pointerY;
+      if (Math.abs(dx) + Math.abs(dy) > 3) state.dragMoved = true;
+      state.pointerX = event.clientX; state.pointerY = event.clientY;
+      state.yaw = (state.yaw + dx * .45) % 360;
+      state.pitch = Math.max(28, Math.min(76, state.pitch - dy * .32));
+      renderScene();
+    });
+    function stopDrag(event) {
+      if (event && !state.dragMoved) {
+        if (state.pointerRoomId) selectRoom(state.pointerRoomId);
+      }
+      state.dragging = false;
+      state.pointerRoomId = null;
+      svg.classList.remove("is-dragging");
+      if (event && svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);
+    }
+    svg.addEventListener("pointerup", stopDrag); svg.addEventListener("pointercancel", stopDrag); svg.addEventListener("pointerleave", (event) => { if (state.dragging && event.buttons === 0) stopDrag(event); });
+
+    renderAll();
+  </script>
+</body>
+</html>
